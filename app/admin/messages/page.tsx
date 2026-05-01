@@ -1,11 +1,11 @@
 'use client';
 
 import { supabase } from '@/lib/supabase';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
-export default function AdminMessagesPage() {
+function MessagesContent() {
   const searchParams = useSearchParams();
   const userId = searchParams.get('user');
   const [messages, setMessages] = useState<any[]>([]);
@@ -58,11 +58,7 @@ export default function AdminMessagesPage() {
     <div className="p-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">💬 Messages</h1>
-        {userId && (
-          <Link href="/admin/users" className="text-blue-600 hover:underline">
-            ← Retour aux utilisateurs
-          </Link>
-        )}
+        {userId && <Link href="/admin/users" className="text-blue-600 hover:underline">← Retour aux utilisateurs</Link>}
       </div>
 
       {userId && user && (
@@ -88,17 +84,20 @@ export default function AdminMessagesPage() {
                     {new Date(msg.created_at).toLocaleString()}
                   </p>
                 </div>
-                <button
-                  onClick={() => deleteMessage(msg.id)}
-                  className="text-red-600 hover:text-red-800 text-sm"
-                >
-                  🗑️
-                </button>
+                <button onClick={() => deleteMessage(msg.id)} className="text-red-600 hover:text-red-800 text-sm">🗑️</button>
               </div>
             </div>
           ))}
         </div>
       )}
     </div>
+  );
+}
+
+export default function AdminMessagesPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center">Chargement...</div>}>
+      <MessagesContent />
+    </Suspense>
   );
 }
