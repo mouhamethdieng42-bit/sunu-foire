@@ -6,10 +6,6 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
 
-export async function generateStaticParams() {
-  return [];
-}
-
 export default function SellerShopPage() {
   const { id } = useParams();
   const [seller, setSeller] = useState<any>(null);
@@ -63,12 +59,10 @@ export default function SellerShopPage() {
   const filterAndSortProducts = () => {
     let filtered = [...products];
 
-    // Filtre par catégorie
     if (categoryFilter !== 'all') {
       filtered = filtered.filter(p => p.category === categoryFilter);
     }
 
-    // Tri
     switch (sortBy) {
       case 'price_asc':
         filtered.sort((a, b) => a.price - b.price);
@@ -108,14 +102,12 @@ export default function SellerShopPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Bannière */}
       <div className="relative h-48 md:h-64 bg-gradient-to-r from-green-700 to-green-600">
         {seller?.banner_url && (
           <img src={seller.banner_url} alt="Bannière" className="w-full h-full object-cover" />
         )}
         <div className="absolute inset-0 bg-black/30"></div>
         
-        {/* Photo de profil */}
         <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2 md:left-8 md:transform-none">
           <div className="w-24 h-24 bg-white rounded-full border-4 border-white shadow-lg flex items-center justify-center text-4xl overflow-hidden">
             {seller?.avatar_url ? (
@@ -127,10 +119,8 @@ export default function SellerShopPage() {
         </div>
       </div>
 
-      {/* Contenu principal */}
       <div className="max-w-6xl mx-auto px-4 pt-16 pb-8">
         
-        {/* Infos vendeur */}
         <div className="text-center md:text-left mb-8">
           <h1 className="text-2xl md:text-3xl font-bold">{seller?.full_name || 'Producteur local'}</h1>
           {seller?.location && (
@@ -153,7 +143,6 @@ export default function SellerShopPage() {
           </div>
         </div>
 
-        {/* Bio */}
         {seller?.bio && (
           <div className="bg-white rounded-xl p-6 mb-8 shadow-sm">
             <h2 className="font-bold text-lg mb-2">📝 À propos</h2>
@@ -161,7 +150,6 @@ export default function SellerShopPage() {
           </div>
         )}
 
-        {/* Filtres et tri */}
         <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
           <div className="flex flex-wrap gap-2">
             {categories.map(cat => (
@@ -189,7 +177,6 @@ export default function SellerShopPage() {
           </select>
         </div>
 
-        {/* Grille de produits */}
         {filteredProducts.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-xl">
             <p className="text-gray-500">Aucun produit dans cette catégorie.</p>
