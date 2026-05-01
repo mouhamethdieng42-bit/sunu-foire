@@ -1,14 +1,14 @@
 'use client';
 
 import { supabase } from '@/lib/supabase';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useCart } from '@/context/CartContext';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { addToWishlist, removeFromWishlist } from '@/lib/wishlist';
 import { useRouter } from 'next/navigation';
 
-export default function ProductsPage() {
+function ProductsContent() {
   const searchParams = useSearchParams();
   const categoryFilter = searchParams.get('category');
   const router = useRouter();
@@ -348,5 +348,13 @@ export default function ProductsPage() {
         })}
       </div>
     </div>
+  );
+}
+
+export default function ProductsPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center">Chargement...</div>}>
+      <ProductsContent />
+    </Suspense>
   );
 }
