@@ -5,6 +5,9 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 
+export async function generateStaticParams() {
+  return [];
+}
 export default function EditProductPage() {
   const { id } = useParams();
   const router = useRouter();

@@ -6,6 +6,10 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
 
+export async function generateStaticParams() {
+  return [];
+}
+
 export default function SellerShopPage() {
   const { id } = useParams();
   const [seller, setSeller] = useState<any>(null);
