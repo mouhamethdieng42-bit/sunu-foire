@@ -14,7 +14,7 @@ export default function ResetPasswordPage() {
     setError('');
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: 'http://localhost:3000/auth/update-password',
+      redirectTo: 'https://sunu-foire.vercel.app/auth/update-password',
     });
 
     if (error) {
