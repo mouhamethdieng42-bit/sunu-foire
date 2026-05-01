@@ -1,11 +1,11 @@
 'use client';
 
 import { supabase } from '@/lib/supabase';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
-export default function AdminOrdersPage() {
+function AdminOrdersContent() {
   const searchParams = useSearchParams();
   const userId = searchParams.get('user');
   
@@ -52,7 +52,6 @@ export default function AdminOrdersPage() {
   const filterOrders = () => {
     let filtered = [...orders];
 
-    // Recherche
     if (searchTerm) {
       filtered = filtered.filter(order =>
         order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -61,12 +60,10 @@ export default function AdminOrdersPage() {
       );
     }
 
-    // Filtre statut
     if (statusFilter !== 'all') {
       filtered = filtered.filter(order => order.status === statusFilter);
     }
 
-    // Filtre date
     if (dateFilter !== 'all') {
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -124,7 +121,6 @@ export default function AdminOrdersPage() {
         )}
       </div>
 
-      {/* Infos utilisateur (si filtre) */}
       {userId && userInfo && (
         <div className="bg-blue-50 p-4 rounded-xl mb-6">
           <p className="font-semibold">{userInfo.full_name || 'Utilisateur'}</p>
@@ -132,7 +128,6 @@ export default function AdminOrdersPage() {
         </div>
       )}
 
-      {/* Statistiques */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
         <div className="bg-white p-4 rounded-xl shadow border-l-4 border-blue-500">
           <p className="text-gray-500 text-sm">Total commandes</p>
@@ -156,7 +151,6 @@ export default function AdminOrdersPage() {
         </div>
       </div>
 
-      {/* Filtres */}
       <div className="bg-white p-4 rounded-xl shadow mb-6 flex flex-wrap gap-4 items-end">
         <div className="flex-1 min-w-[200px]">
           <label className="block text-sm font-medium text-gray-700 mb-1">🔍 Rechercher</label>
@@ -210,7 +204,6 @@ export default function AdminOrdersPage() {
         </div>
       </div>
 
-      {/* Liste des commandes */}
       <div className="space-y-4">
         {filteredOrders.map((order) => {
           const statusBadge = getStatusBadge(order.status);
@@ -219,7 +212,6 @@ export default function AdminOrdersPage() {
 
           return (
             <div key={order.id} className="bg-white rounded-xl shadow overflow-hidden">
-              {/* En-tête de commande */}
               <div className="p-4 border-b flex flex-wrap justify-between items-center gap-2">
                 <div>
                   <p className="font-semibold">{order.profiles?.full_name || 'Client'}</p>
@@ -239,7 +231,6 @@ export default function AdminOrdersPage() {
                 </div>
               </div>
 
-              {/* Détails (expansible) */}
               {isExpanded && (
                 <div className="p-4 bg-gray-50 border-b">
                   <p className="text-sm text-gray-600">📅 {new Date(order.created_at).toLocaleString()}</p>
@@ -247,7 +238,6 @@ export default function AdminOrdersPage() {
                   <p className="text-sm text-gray-600">📍 {order.delivery_address}</p>
                   <p className="text-sm text-gray-600">💳 {order.payment_method || 'Non renseigné'}</p>
                   
-                  {/* Produits commandés */}
                   {order.order_items && order.order_items.length > 0 && (
                     <div className="mt-3 pt-3 border-t">
                       <p className="font-semibold text-sm mb-2">Produits :</p>
@@ -264,7 +254,6 @@ export default function AdminOrdersPage() {
                 </div>
               )}
 
-              {/* Actions */}
               <div className="p-3 bg-gray-50 flex justify-between items-center">
                 <select
                   value={order.status}
@@ -295,5 +284,13 @@ export default function AdminOrdersPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function AdminOrdersPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center">Chargement...</div>}>
+      <AdminOrdersContent />
+    </Suspense>
   );
 }
