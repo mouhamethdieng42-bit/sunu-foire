@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
-export default function LoginPage() {
+function LoginContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -36,14 +36,12 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-white p-4">
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl overflow-hidden">
-        {/* En-tête */}
         <div className="bg-green-700 py-6 text-center">
           <div className="text-4xl mb-2">🌾</div>
           <h1 className="text-2xl font-bold text-white">SUNU FOIRE</h1>
           <p className="text-green-100 text-sm mt-1">Connectez-vous à votre compte</p>
         </div>
 
-        {/* Formulaire */}
         <div className="p-6 md:p-8">
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
@@ -109,5 +107,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Chargement...</div>}>
+      <LoginContent />
+    </Suspense>
   );
 }
