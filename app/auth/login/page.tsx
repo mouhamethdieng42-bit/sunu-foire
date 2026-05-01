@@ -14,6 +14,7 @@ function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect') || '/';
+  const message = searchParams.get('message');
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,6 +44,13 @@ function LoginContent() {
         </div>
 
         <div className="p-6 md:p-8">
+          {/* Message de confirmation d'email */}
+          {message === 'check-email' && (
+            <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-2 rounded-lg mb-4 text-sm">
+              ✅ Un email de confirmation vous a été envoyé. Activez votre compte avant de vous connecter.
+            </div>
+          )}
+
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>

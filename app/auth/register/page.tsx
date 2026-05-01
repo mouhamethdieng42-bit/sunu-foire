@@ -33,19 +33,32 @@ export default function RegisterPage() {
     }
 
     if (authData.user) {
-      const { error: profileError } = await supabase.from('profiles').insert({
-        id: authData.user.id,
-        email: email,
-        full_name: fullName,
-        phone: phone,
-        role: role,
-      });
+      // Vérifier si le profil existe déjà
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', authData.user.id)
+        .single();
 
-      if (profileError) {
-        setError(profileError.message);
-      } else {
-        router.push('/auth/login');
+      if (!existingProfile) {
+        const { error: profileError } = await supabase.from('profiles').insert({
+          id: authData.user.id,
+          email: email,
+          full_name: fullName,
+          phone: phone,
+          role: role,
+        });
+
+        if (profileError) {
+          setError(profileError.message);
+          setLoading(false);
+          return;
+        }
       }
+
+      // Message de confirmation
+      alert('✅ Un email de confirmation vous a été envoyé.\n\nVeuillez vérifier votre boîte de réception (et vos spams) pour activer votre compte.\n\nVous serez redirigé vers la page de connexion après confirmation.');
+      router.push('/auth/login?message=check-email');
     }
     setLoading(false);
   };
@@ -53,14 +66,12 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-white p-4">
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl overflow-hidden">
-        {/* En-tête */}
         <div className="bg-green-700 py-6 text-center">
           <div className="text-4xl mb-2">🌾</div>
           <h1 className="text-2xl font-bold text-white">SUNU FOIRE</h1>
           <p className="text-green-100 text-sm mt-1">Créez votre compte</p>
         </div>
 
-        {/* Formulaire */}
         <div className="p-6 md:p-8">
           <form onSubmit={handleRegister} className="space-y-4">
             <div>
