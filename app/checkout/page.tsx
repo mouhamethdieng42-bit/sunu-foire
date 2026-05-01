@@ -1,11 +1,11 @@
 'use client';
 
 import { useCart } from '@/context/CartContext';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 
-export default function CheckoutPage() {
+function CheckoutContent() {
   const { items, totalPrice, clearCart } = useCart();
   const [loading, setLoading] = useState(false);
   const [address, setAddress] = useState('');
@@ -20,7 +20,9 @@ export default function CheckoutPage() {
   const checkUser = async () => {
     const { data: user } = await supabase.auth.getUser();
     if (!user.user) {
-      router.push('/auth/login?redirect=/checkout');
+      if (typeof window !== 'undefined') {
+        router.push('/auth/login?redirect=/checkout');
+      }
     }
   };
 
@@ -36,7 +38,9 @@ export default function CheckoutPage() {
     const { data: user } = await supabase.auth.getUser();
     
     if (!user.user) {
-      router.push('/auth/login?redirect=/checkout');
+      if (typeof window !== 'undefined') {
+        router.push('/auth/login?redirect=/checkout');
+      }
       setLoading(false);
       return;
     }
@@ -81,13 +85,17 @@ export default function CheckoutPage() {
     clearCart();
     
     alert('✅ Commande test créée avec succès !');
-    router.push('/account/orders');
+    if (typeof window !== 'undefined') {
+      router.push('/account/orders');
+    }
     
     setLoading(false);
   };
 
   if (items.length === 0) {
-    router.push('/cart');
+    if (typeof window !== 'undefined') {
+      router.push('/cart');
+    }
     return null;
   }
 
@@ -144,5 +152,13 @@ export default function CheckoutPage() {
         </button>
       </div>
     </div>
+  );
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center">Chargement...</div>}>
+      <CheckoutContent />
+    </Suspense>
   );
 }

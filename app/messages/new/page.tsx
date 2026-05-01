@@ -1,11 +1,11 @@
 'use client';
 
 import { supabase } from '@/lib/supabase';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-export default function NewMessagePage() {
+function NewMessageContent() {
   const searchParams = useSearchParams();
   const receiverId = searchParams.get('receiver_id');
   const productId = searchParams.get('product_id');
@@ -103,5 +103,13 @@ export default function NewMessagePage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function NewMessagePage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center">Chargement...</div>}>
+      <NewMessageContent />
+    </Suspense>
   );
 }
