@@ -21,9 +21,17 @@ export default function RegisterPage() {
     setLoading(true);
     setError('');
 
+    // 1. Créer l'utilisateur
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        data: {
+          full_name: fullName,
+          phone: phone,
+          role: role,
+        }
+      }
     });
 
     if (authError) {
@@ -33,33 +41,23 @@ export default function RegisterPage() {
     }
 
     if (authData.user) {
-      // Vérifier si le profil existe déjà
-      const { data: existingProfile } = await supabase
+      // 2. Attendre un peu que le trigger crée le profil
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // 3. Mettre à jour manuellement le rôle
+      const { error: updateError } = await supabase
         .from('profiles')
-        .select('id')
-        .eq('id', authData.user.id)
-        .single();
+        .update({ role: role })
+        .eq('id', authData.user.id);
 
-      if (!existingProfile) {
-        const { error: profileError } = await supabase.from('profiles').insert({
-          id: authData.user.id,
-          email: email,
-          full_name: fullName,
-          phone: phone,
-          role: role,
-        });
-
-        if (profileError) {
-          setError(profileError.message);
-          setLoading(false);
-          return;
-        }
+      if (updateError) {
+        console.error('Erreur mise à jour rôle:', updateError);
       }
-
-      // Message de confirmation
-      alert('✅ Un email de confirmation vous a été envoyé.\n\nVeuillez vérifier votre boîte de réception (et vos spams) pour activer votre compte.\n\nVous serez redirigé vers la page de connexion après confirmation.');
-      router.push('/auth/login?message=check-email');
     }
+
+    // 4. Succès
+    alert('✅ Inscription réussie ! Vérifiez votre email pour confirmer votre compte.');
+    router.push('/auth/login');
     setLoading(false);
   };
 
