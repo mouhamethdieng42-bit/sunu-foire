@@ -108,7 +108,7 @@ export default function Navigation() {
   );
 }
 
-// --- Desktop Menu (dropdowns au survol) ---
+// --- Desktop Menu with smooth dropdowns ---
 function DesktopMenu({
   user,
   role,
@@ -139,6 +139,7 @@ function DesktopMenu({
 
       {user ? (
         <>
+          {/* Mon compte dropdown */}
           <div
             className="relative"
             onMouseEnter={() => onMouseEnter('account')}
@@ -158,16 +159,32 @@ function DesktopMenu({
               }`}
             >
               {isBuyer && (
-                <Link href="/buyer/dashboard" className="block px-4 py-2 hover:bg-green-50 hover:text-green-700">🛒 Mon espace acheteur</Link>
+                <Link href="/buyer/dashboard" className="block px-4 py-2 hover:bg-green-50 hover:text-green-700 transition">
+                  🛒 Mon espace acheteur
+                </Link>
               )}
               {isSeller && (
-                <Link href="/dashboard/seller" className="block px-4 py-2 hover:bg-green-50 hover:text-green-700">📊 Dashboard vendeur</Link>
+                <Link href="/dashboard/seller" className="block px-4 py-2 hover:bg-green-50 hover:text-green-700 transition">
+                  📊 Dashboard vendeur
+                </Link>
               )}
-              <Link href="/account/orders" className="block px-4 py-2 hover:bg-green-50 hover:text-green-700">📦 Mes commandes</Link>
-              <Link href="/messages" className="block px-4 py-2 hover:bg-green-50 hover:text-green-700">💬 Messages</Link>
+              <Link href="/account/orders" className="block px-4 py-2 hover:bg-green-50 hover:text-green-700 transition">
+                📦 Mes commandes
+              </Link>
+              <Link href="/messages" className="block px-4 py-2 hover:bg-green-50 hover:text-green-700 transition">
+                💬 Messages
+              </Link>
+              <Link href="/user/profile" className="block px-4 py-2 hover:bg-green-50 hover:text-green-700 transition">
+  👤 Mon profil
+</Link>
+              {/* Lien Portefeuille ajouté */}
+              <Link href="/wallet" className="block px-4 py-2 hover:bg-green-50 hover:text-green-700 transition">
+                💰 Portefeuille
+              </Link>
             </div>
           </div>
 
+          {/* Administration dropdown (admin only) */}
           {isAdmin && (
             <div
               className="relative"
@@ -187,10 +204,18 @@ function DesktopMenu({
                     : 'opacity-0 scale-95 pointer-events-none'
                 }`}
               >
-                <Link href="/admin" className="block px-4 py-2 hover:bg-green-50 hover:text-green-700">📊 Tableau de bord</Link>
-                <Link href="/admin/settings" className="block px-4 py-2 hover:bg-green-50 hover:text-green-700">⚙️ Paramètres site</Link>
-                <Link href="/admin/transactions" className="block px-4 py-2 hover:bg-green-50 hover:text-green-700">💰 Transactions</Link>
-                <Link href="/admin/transaction-settings" className="block px-4 py-2 hover:bg-green-50 hover:text-green-700">💸 Paramètres transactions</Link>
+                <Link href="/admin" className="block px-4 py-2 hover:bg-green-50 hover:text-green-700 transition">
+                  📊 Tableau de bord
+                </Link>
+                <Link href="/admin/settings" className="block px-4 py-2 hover:bg-green-50 hover:text-green-700 transition">
+                  ⚙️ Paramètres site
+                </Link>
+                <Link href="/admin/transactions" className="block px-4 py-2 hover:bg-green-50 hover:text-green-700 transition">
+                  💰 Transactions
+                </Link>
+                <Link href="/admin/transaction-settings" className="block px-4 py-2 hover:bg-green-50 hover:text-green-700 transition">
+                  💸 Paramètres transactions
+                </Link>
               </div>
             </div>
           )}
@@ -298,6 +323,13 @@ function MobileDrawer({
                     </Link>
                     <Link href="/messages" className="block py-2 px-4 rounded hover:bg-green-50 hover:text-green-700 transition" onClick={onClose}>
                       💬 Messages
+                    </Link>
+                    <Link href="/user/profile" className="block py-2 px-4 rounded hover:bg-green-50 hover:text-green-700 transition" onClick={onClose}>
+  👤 Mon profil
+</Link>
+                    {/* Lien Portefeuille ajouté */}
+                    <Link href="/wallet" className="block py-2 px-4 rounded hover:bg-green-50 hover:text-green-700 transition" onClick={onClose}>
+                      💰 Portefeuille
                     </Link>
                   </div>
                 </div>
