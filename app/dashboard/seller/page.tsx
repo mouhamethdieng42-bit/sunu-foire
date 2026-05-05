@@ -11,6 +11,7 @@ export default function SellerDashboard() {
   const [messages, setMessages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+  const [sellerProfile, setSellerProfile] = useState<any>(null);
   const [stats, setStats] = useState({
     totalProducts: 0,
     totalSales: 0,
@@ -34,6 +35,14 @@ export default function SellerDashboard() {
       }
 
       setUserId(user.user.id);
+
+      // Récupérer le profil du vendeur (incluant wallet_balance)
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name, phone, wallet_balance')
+        .eq('id', user.user.id)
+        .single();
+      setSellerProfile(profile);
 
       // 1. Récupérer les produits du vendeur
       const { data: productsData, error: productsError } = await supabase
@@ -213,8 +222,8 @@ export default function SellerDashboard() {
 
       <div className="p-4 md:p-8 max-w-6xl mx-auto">
         
-        {/* Cartes statistiques */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+        {/* Cartes statistiques (avec ajout du solde) */}
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
           <div className="bg-white p-4 rounded-xl shadow-sm hover:shadow-md transition">
             <p className="text-gray-500 text-sm">Produits</p>
             <p className="text-2xl font-bold text-blue-600">{stats.totalProducts}</p>
@@ -234,6 +243,11 @@ export default function SellerDashboard() {
           <div className="bg-white p-4 rounded-xl shadow-sm hover:shadow-md transition">
             <p className="text-gray-500 text-sm">Chiffre d'affaires</p>
             <p className="text-2xl font-bold text-green-600">{stats.totalSales.toLocaleString()} FCFA</p>
+          </div>
+          {/* Solde du portefeuille vendeur */}
+          <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-purple-500 hover:shadow-md transition">
+            <p className="text-gray-500 text-sm">💰 Portefeuille</p>
+            <p className="text-2xl font-bold text-purple-600">{sellerProfile?.wallet_balance?.toLocaleString() || 0} FCFA</p>
           </div>
         </div>
 

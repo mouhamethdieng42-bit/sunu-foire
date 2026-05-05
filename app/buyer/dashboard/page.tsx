@@ -37,10 +37,10 @@ export default function BuyerDashboard() {
 
     setUser(currentUser);
 
-    // Profil
+    // Profil – on récupère aussi wallet_balance
     const { data: profileData } = await supabase
       .from('profiles')
-      .select('*')
+      .select('*, wallet_balance')
       .eq('id', currentUser.id)
       .single();
     setProfile(profileData);
@@ -101,19 +101,6 @@ export default function BuyerDashboard() {
     setSaving(false);
   };
 
-  const setDefaultAddress = async (addressId: string) => {
-    await supabase.from('addresses').update({ is_default: false }).eq('user_id', user.id);
-    await supabase.from('addresses').update({ is_default: true }).eq('id', addressId);
-    fetchAllData();
-  };
-
-  const deleteAddress = async (addressId: string) => {
-    if (confirm('Supprimer cette adresse ?')) {
-      await supabase.from('addresses').delete().eq('id', addressId);
-      fetchAllData();
-    }
-  };
-
   const removeFromWishlist = async (productId: string) => {
     await supabase.from('wishlist').delete().eq('user_id', user.id).eq('product_id', productId);
     fetchAllData();
@@ -157,8 +144,8 @@ export default function BuyerDashboard() {
           </div>
         </div>
 
-        {/* Cartes statistiques */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        {/* Cartes statistiques + solde */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
           <div className="bg-white p-4 rounded-xl shadow-sm hover:shadow-md transition">
             <p className="text-gray-500 text-sm">Commandes</p>
             <p className="text-2xl font-bold text-blue-600">{orders.length}</p>
@@ -175,6 +162,11 @@ export default function BuyerDashboard() {
             <p className="text-gray-500 text-sm">Favoris</p>
             <p className="text-2xl font-bold text-purple-600">{wishlist.length}</p>
           </div>
+          {/* Solde du portefeuille */}
+          <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-green-500 hover:shadow-md transition">
+            <p className="text-gray-500 text-sm">💰 Portefeuille</p>
+            <p className="text-2xl font-bold text-green-600">{profile?.wallet_balance?.toLocaleString() || 0} FCFA</p>
+          </div>
         </div>
 
         {/* Actions rapides */}
@@ -188,7 +180,6 @@ export default function BuyerDashboard() {
           <Link href="/account/orders" className="bg-purple-600 text-white text-center p-3 rounded-xl hover:bg-purple-700 transition text-sm">
             📦 Commandes
           </Link>
-          {/* MODIFICATION ICI : lien vers /favorites au lieu de /products */}
           <Link href="/favorites" className="bg-pink-600 text-white text-center p-3 rounded-xl hover:bg-pink-700 transition text-sm">
             ❤️ Favoris ({wishlist.length})
           </Link>
@@ -285,6 +276,7 @@ export default function BuyerDashboard() {
                   <p><span className="text-gray-500">Email :</span> {user?.email}</p>
                   <p><span className="text-gray-500">Téléphone :</span> {profile?.phone || '—'}</p>
                   <p><span className="text-gray-500">Membre depuis :</span> {new Date(profile?.created_at).toLocaleDateString('fr-FR')}</p>
+                  <p><span className="text-gray-500">💰 Solde :</span> <span className="font-semibold text-green-700">{profile?.wallet_balance?.toLocaleString()} FCFA</span></p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -337,16 +329,6 @@ export default function BuyerDashboard() {
                       </div>
                       <p className="text-gray-600 mt-1">{addr.address}</p>
                       <p className="text-gray-500 text-xs">{addr.city}</p>
-                      <div className="flex gap-2 mt-2">
-                        {!addr.is_default && (
-                          <button onClick={() => setDefaultAddress(addr.id)} className="text-blue-600 text-xs">
-                            Définir par défaut
-                          </button>
-                        )}
-                        <button onClick={() => deleteAddress(addr.id)} className="text-red-600 text-xs">
-                          Supprimer
-                        </button>
-                      </div>
                     </div>
                   ))}
                 </div>
