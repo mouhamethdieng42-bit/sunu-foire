@@ -1,114 +1,121 @@
 'use client';
 
 import { useCart } from '@/context/CartContext';
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 
-function CheckoutContent() {
+export default function CheckoutPage() {
   const { items, totalPrice, clearCart } = useCart();
   const [loading, setLoading] = useState(false);
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'card'>('wallet');
+  const [balance, setBalance] = useState(0);
+  const [error, setError] = useState('');
   const router = useRouter();
 
-  // Vérifier si l'utilisateur est connecté
   useEffect(() => {
-    checkUser();
+    if (items.length === 0) router.push('/cart');
+  }, [items, router]);
+
+  useEffect(() => {
+    checkUserAndBalance();
   }, []);
 
-  const checkUser = async () => {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user.user) {
-      if (typeof window !== 'undefined') {
-        router.push('/auth/login?redirect=/checkout');
-      }
+  const checkUserAndBalance = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      router.push('/auth/login?redirect=/checkout');
+      return;
     }
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('wallet_balance')
+      .eq('id', user.id)
+      .single();
+    setBalance(profile?.wallet_balance || 0);
   };
 
-  // Créer la commande en mode test avec commission
-  const createTestOrder = async () => {
+  const createOrder = async () => {
+    setError('');
     if (!address || !phone) {
-      alert('Veuillez remplir tous les champs');
+      setError('Veuillez remplir tous les champs');
+      return;
+    }
+    if (paymentMethod === 'wallet' && balance < totalPrice) {
+      setError(`Solde insuffisant (${balance.toLocaleString()} FCFA)`);
       return;
     }
 
     setLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      router.push('/auth/login?redirect=/checkout');
+      return;
+    }
 
-    const { data: user } = await supabase.auth.getUser();
-    
-    if (!user.user) {
-      if (typeof window !== 'undefined') {
-        router.push('/auth/login?redirect=/checkout');
-      }
+    // Récupérer le token
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) {
+      setError('Session expirée. Veuillez vous reconnecter.');
       setLoading(false);
       return;
     }
 
-    // Calcul de la commission (1%) - cachée pour l'acheteur
-    const commission = Math.floor(totalPrice * 0.01);
-    const sellerAmount = totalPrice - commission;
-
-    // Créer la commande avec commission
-    const { data: order, error } = await supabase
-      .from('orders')
-      .insert({
-        buyer_id: user.user.id,
+    const res = await fetch('/api/checkout/wallet', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        buyer_id: user.id,
         total_amount: totalPrice,
         delivery_address: address,
-        phone: phone,
-        payment_method: 'test',
-        status: 'test',
-        commission: commission,
-        seller_amount: sellerAmount,
-      })
-      .select()
-      .single();
+        phone,
+        payment_method: paymentMethod,
+        items: items.map(item => ({
+          product_id: item.id,
+          quantity: item.quantity,
+          unit_price: item.price,
+        })),
+      }),
+    });
 
-    if (error) {
-      alert('Erreur: ' + error.message);
-      setLoading(false);
-      return;
+    const data = await res.json();
+    if (res.ok) {
+      clearCart();
+      router.push(`/account/orders/${data.orderId}`);
+    } else {
+      setError(data.error || 'Erreur lors de la création de la commande');
     }
-
-    // Créer les articles de commande
-    for (const item of items) {
-      await supabase.from('order_items').insert({
-        order_id: order.id,
-        product_id: item.id,
-        quantity: item.quantity,
-        unit_price: item.price,
-      });
-    }
-
-    // Vider le panier
-    clearCart();
-    
-    alert('✅ Commande test créée avec succès !');
-    if (typeof window !== 'undefined') {
-      router.push('/account/orders');
-    }
-    
     setLoading(false);
   };
 
-  if (items.length === 0) {
-    if (typeof window !== 'undefined') {
-      router.push('/cart');
-    }
-    return null;
-  }
+  if (items.length === 0) return <div className="p-8 text-center">Redirection...</div>;
 
   return (
     <div className="p-4 md:p-8 max-w-2xl mx-auto">
       <h1 className="text-xl md:text-2xl font-bold mb-6">Validation de commande</h1>
+      {error && <div className="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm">{error}</div>}
 
-      {/* Mode test - bandeau */}
-      <div className="bg-yellow-100 border border-yellow-400 text-yellow-800 p-3 rounded mb-4 text-sm">
-        ⚠️ <strong>Mode test actif</strong> - Aucun paiement réel n'est effectué.
+      <div className="bg-white p-4 rounded-lg shadow mb-6">
+        <h2 className="font-semibold mb-2">Moyen de paiement</h2>
+        <div className="space-y-2">
+          <label className="flex items-center gap-2">
+            <input type="radio" value="wallet" checked={paymentMethod === 'wallet'} onChange={() => setPaymentMethod('wallet')} />
+            <span>💰 Payer avec mon portefeuille (solde : {balance.toLocaleString()} FCFA)</span>
+          </label>
+          <label className="flex items-center gap-2">
+            <input type="radio" value="card" checked={paymentMethod === 'card'} onChange={() => setPaymentMethod('card')} />
+            <span>💳 Carte bancaire / Mobile Money (bientôt disponible)</span>
+          </label>
+        </div>
+        {paymentMethod === 'card' && <div className="mt-2 text-xs text-gray-500">⚠️ Mode simulation – aucun vrai paiement.</div>}
       </div>
 
-      {/* Récapitulatif - sans afficher la commission */}
       <div className="bg-gray-50 p-4 rounded mb-6">
         <h2 className="font-semibold mb-2">Récapitulatif</h2>
         {items.map((item) => (
@@ -118,47 +125,18 @@ function CheckoutContent() {
           </div>
         ))}
         <div className="border-t pt-2 mt-2 font-bold flex justify-between">
-          <span>Total à payer</span>
+          <span>Total</span>
           <span>{totalPrice.toLocaleString()} FCFA</span>
         </div>
       </div>
 
-      {/* Formulaire */}
       <div className="space-y-4">
-        <input
-          type="tel"
-          placeholder="Téléphone (pour la livraison)"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          className="w-full p-2 border rounded"
-          required
-        />
-
-        <textarea
-          placeholder="Adresse de livraison"
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          className="w-full p-2 border rounded"
-          rows={3}
-          required
-        />
-
-        <button
-          onClick={createTestOrder}
-          disabled={loading}
-          className="w-full bg-green-600 text-white p-2 rounded hover:bg-green-700 disabled:bg-gray-400"
-        >
-          {loading ? 'Création...' : '📦 Commander (mode test - gratuit)'}
+        <input type="tel" placeholder="Téléphone (pour la livraison)" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full p-2 border rounded" required />
+        <textarea placeholder="Adresse de livraison" value={address} onChange={(e) => setAddress(e.target.value)} className="w-full p-2 border rounded" rows={3} required />
+        <button onClick={createOrder} disabled={loading} className="w-full bg-green-600 text-white p-2 rounded hover:bg-green-700 disabled:bg-gray-400">
+          {loading ? 'Traitement...' : '📦 Confirmer la commande'}
         </button>
       </div>
     </div>
-  );
-}
-
-export default function CheckoutPage() {
-  return (
-    <Suspense fallback={<div className="p-8 text-center">Chargement...</div>}>
-      <CheckoutContent />
-    </Suspense>
   );
 }

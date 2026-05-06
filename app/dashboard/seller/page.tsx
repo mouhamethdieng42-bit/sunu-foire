@@ -18,6 +18,7 @@ export default function SellerDashboard() {
     totalOrders: 0,
     pendingOrders: 0,
     lowStock: 0,
+    heldAmount: 0, // nouveau
   });
   const router = useRouter();
 
@@ -68,10 +69,10 @@ export default function SellerDashboard() {
       let totalSales = 0;
       let totalOrders = 0;
       let pendingOrders = 0;
+      let heldAmount = 0;
 
       // 3. Récupérer les commandes si le vendeur a des produits
       if (productIds.length > 0) {
-        // Requête simplifiée SANS la relation buyer:profiles
         const { data: orderItemsData, error: orderItemsError } = await supabase
           .from('order_items')
           .select(`
@@ -84,6 +85,7 @@ export default function SellerDashboard() {
               total_amount,
               delivery_address,
               payment_method,
+              payment_status,
               status,
               buyer_id
             ),
@@ -111,6 +113,7 @@ export default function SellerDashboard() {
                 total_amount: order.total_amount,
                 delivery_address: order.delivery_address,
                 payment_method: order.payment_method,
+                payment_status: order.payment_status,
                 status: order.status,
                 buyer_id: order.buyer_id,
                 buyer_name: null,
@@ -130,7 +133,7 @@ export default function SellerDashboard() {
           
           ordersList = Array.from(ordersMap.values());
           
-          // Récupérer les noms des clients séparément
+          // Récupérer les noms des clients
           for (const order of ordersList) {
             if (order.buyer_id) {
               const { data: buyer } = await supabase
@@ -149,6 +152,10 @@ export default function SellerDashboard() {
           totalOrders = ordersList.length;
           pendingOrders = ordersList.filter(o => o.status === 'pending').length;
           totalSales = ordersList.reduce((sum, o) => sum + (o.total_amount || 0), 0);
+          // Calcul du montant en séquestre
+          heldAmount = ordersList
+            .filter(o => o.status === 'processing' && o.payment_status === 'held')
+            .reduce((sum, o) => sum + (o.total_amount || 0), 0);
         }
       }
 
@@ -159,6 +166,7 @@ export default function SellerDashboard() {
         totalOrders,
         pendingOrders,
         lowStock,
+        heldAmount,
       });
 
       // 5. Récupérer les messages non lus
@@ -212,7 +220,6 @@ export default function SellerDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* En-tête avec dégradé */}
       <div className="bg-gradient-to-r from-green-700 to-green-600 -mx-4 md:-mx-8 px-4 md:px-8 py-8 mb-8 -mt-4 md:-mt-8">
         <div className="max-w-6xl mx-auto">
           <h1 className="text-2xl md:text-3xl font-bold text-white">📊 Dashboard producteur</h1>
@@ -222,8 +229,8 @@ export default function SellerDashboard() {
 
       <div className="p-4 md:p-8 max-w-6xl mx-auto">
         
-        {/* Cartes statistiques (avec ajout du solde) */}
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
+        {/* Cartes statistiques (7 colonnes sur desktop) */}
+        <div className="grid grid-cols-2 md:grid-cols-7 gap-4 mb-8">
           <div className="bg-white p-4 rounded-xl shadow-sm hover:shadow-md transition">
             <p className="text-gray-500 text-sm">Produits</p>
             <p className="text-2xl font-bold text-blue-600">{stats.totalProducts}</p>
@@ -244,14 +251,19 @@ export default function SellerDashboard() {
             <p className="text-gray-500 text-sm">Chiffre d'affaires</p>
             <p className="text-2xl font-bold text-green-600">{stats.totalSales.toLocaleString()} FCFA</p>
           </div>
-          {/* Solde du portefeuille vendeur */}
           <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-purple-500 hover:shadow-md transition">
             <p className="text-gray-500 text-sm">💰 Portefeuille</p>
             <p className="text-2xl font-bold text-purple-600">{sellerProfile?.wallet_balance?.toLocaleString() || 0} FCFA</p>
           </div>
+          {/* Nouvelle carte : Montant en séquestre */}
+          <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-yellow-500 hover:shadow-md transition">
+            <p className="text-gray-500 text-sm">⏳ En attente (séquestre)</p>
+            <p className="text-2xl font-bold text-yellow-600">{stats.heldAmount.toLocaleString()} FCFA</p>
+            <p className="text-xs text-gray-400">Disponible après livraison</p>
+          </div>
         </div>
 
-        {/* Actions rapides */}
+        {/* Actions rapides (inchangées) */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <Link
             href="/dashboard/seller/products/new"
@@ -279,11 +291,10 @@ export default function SellerDashboard() {
           </Link>
         </div>
 
+        {/* Le reste de la page (produits récents, commandes récentes, messages, etc.) reste strictement identique */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
           {/* Colonne principale - Produits récents */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Derniers produits */}
             <div className="bg-white rounded-xl shadow-sm p-6">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-lg font-bold">📦 Derniers produits</h2>
@@ -341,7 +352,6 @@ export default function SellerDashboard() {
               )}
             </div>
 
-            {/* Dernières commandes */}
             <div className="bg-white rounded-xl shadow-sm p-6">
               <h2 className="text-lg font-bold mb-4">🛒 Commandes récentes</h2>
               {orders.length === 0 ? (
@@ -382,8 +392,6 @@ export default function SellerDashboard() {
 
           {/* Colonne latérale - Messages et conseils */}
           <div className="space-y-6">
-            
-            {/* Messages non lus */}
             <div className="bg-white rounded-xl shadow-sm p-6">
               <h2 className="text-lg font-bold mb-4">💬 Messages récents</h2>
               {messages.length === 0 ? (
@@ -410,7 +418,6 @@ export default function SellerDashboard() {
               </Link>
             </div>
 
-            {/* Conseils */}
             <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-6">
               <h3 className="font-bold text-gray-800 mb-3">💡 Astuce du jour</h3>
               <p className="text-sm text-gray-600 mb-3">
@@ -421,7 +428,6 @@ export default function SellerDashboard() {
               </Link>
             </div>
 
-            {/* Statistiques rapides */}
             <div className="bg-white rounded-xl shadow-sm p-6">
               <h3 className="font-bold text-gray-800 mb-3">📈 Taux de conversion</h3>
               <p className="text-2xl font-bold text-green-600">

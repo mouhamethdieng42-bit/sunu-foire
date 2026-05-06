@@ -355,12 +355,31 @@ export default function OrdersPage() {
                   )}
 
                   <div className="p-3 bg-gray-50 flex flex-wrap justify-end gap-3">
-                    <button onClick={() => setExpandedOrder(isExpanded ? null : order.id)} className="text-blue-600 text-sm">{isExpanded ? '▲ Voir moins' : '▼ Voir détails'}</button>
-                    <button onClick={() => downloadPDF(order)} className="text-red-600 text-sm">📄 PDF Facture</button>
-                    <button onClick={() => downloadCSV(order)} className="text-green-600 text-sm">📊 CSV Export</button>
-                    {order.status === 'delivered' && order.order_items?.map((item: any) => (<Link key={item.product_id} href={`/product/${item.product_id}`} className="text-green-600 text-sm">⭐ Laisser un avis</Link>))}
-                    {order.status === 'pending' && (<button onClick={() => alert('Contacter le service client au 76 858 87 88')} className="text-red-600 text-sm">❌ Annuler</button>)}
-                    <Link href="/products" className="text-blue-600 text-sm">🔄 Recommander</Link>
+                    <button onClick={() => setExpandedOrder(isExpanded ? null : order.id)} className="text-blue-600 text-sm">
+                      {isExpanded ? '▲ Voir moins' : '▼ Voir détails'}
+                    </button>
+                    <Link href={`/account/orders/${order.id}`} className="text-indigo-600 text-sm hover:underline">
+                      🔍 Voir le détail
+                    </Link>
+                    <button onClick={() => downloadPDF(order)} className="text-red-600 text-sm">
+                      📄 PDF Facture
+                    </button>
+                    <button onClick={() => downloadCSV(order)} className="text-green-600 text-sm">
+                      📊 CSV Export
+                    </button>
+                    {order.status === 'delivered' && order.order_items?.map((item: any) => (
+                      <Link key={item.product_id} href={`/product/${item.product_id}`} className="text-green-600 text-sm">
+                        ⭐ Laisser un avis
+                      </Link>
+                    ))}
+                    {order.status === 'pending' && (
+                      <button onClick={() => alert('Contacter le service client au 76 858 87 88')} className="text-red-600 text-sm">
+                        ❌ Annuler
+                      </button>
+                    )}
+                    <Link href="/products" className="text-blue-600 text-sm">
+                      🔄 Recommander
+                    </Link>
                   </div>
                 </div>
               );
