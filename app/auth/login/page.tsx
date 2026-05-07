@@ -1,14 +1,18 @@
+// app/auth/login/page.tsx
 'use client';
 
+import { Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-export default function LoginPage() {
-  const router = useRouter();
+// Composant qui utilise useSearchParams (doit être enveloppé dans un Suspense)
+function LoginForm() {
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get('redirect') || '/';
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -31,7 +35,6 @@ export default function LoginPage() {
       return;
     }
 
-    // Récupérer le rôle de l'utilisateur depuis la table profiles
     if (data.user) {
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
@@ -41,13 +44,11 @@ export default function LoginPage() {
 
       if (profileError) {
         console.error('Erreur récupération rôle:', profileError);
-        // Par défaut, rediriger vers le dashboard acheteur
         router.push(redirectTo !== '/' ? redirectTo : '/buyer/dashboard');
         setLoading(false);
         return;
       }
 
-      // Redirection selon le rôle
       if (profile.role === 'seller') {
         router.push('/dashboard/seller');
       } else if (profile.role === 'admin') {
@@ -129,5 +130,14 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Composant principal avec Suspense
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center">Chargement...</div>}>
+      <LoginForm />
+    </Suspense>
   );
 }
