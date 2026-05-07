@@ -1,37 +1,64 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
-function LoginContent() {
+export default function LoginPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get('redirect') || '/';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const redirect = searchParams.get('redirect') || '/';
-  const message = searchParams.get('message');
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
-    if (error) {
-      setError(error.message);
+    if (signInError) {
+      setError(signInError.message);
       setLoading(false);
-    } else {
-      router.push(redirect);
+      return;
     }
+
+    // Récupérer le rôle de l'utilisateur depuis la table profiles
+    if (data.user) {
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', data.user.id)
+        .single();
+
+      if (profileError) {
+        console.error('Erreur récupération rôle:', profileError);
+        // Par défaut, rediriger vers le dashboard acheteur
+        router.push(redirectTo !== '/' ? redirectTo : '/buyer/dashboard');
+        setLoading(false);
+        return;
+      }
+
+      // Redirection selon le rôle
+      if (profile.role === 'seller') {
+        router.push('/dashboard/seller');
+      } else if (profile.role === 'admin') {
+        router.push('/admin');
+      } else {
+        router.push('/buyer/dashboard');
+      }
+    } else {
+      router.push(redirectTo !== '/' ? redirectTo : '/buyer/dashboard');
+    }
+    setLoading(false);
   };
 
   return (
@@ -44,13 +71,6 @@ function LoginContent() {
         </div>
 
         <div className="p-6 md:p-8">
-          {/* Message de confirmation d'email */}
-          {message === 'check-email' && (
-            <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-2 rounded-lg mb-4 text-sm">
-              ✅ Un email de confirmation vous a été envoyé. Activez votre compte avant de vous connecter.
-            </div>
-          )}
-
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
@@ -59,7 +79,7 @@ function LoginContent() {
                 placeholder="votre@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
                 required
               />
             </div>
@@ -72,7 +92,7 @@ function LoginContent() {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent pr-10"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 pr-10"
                   required
                 />
                 <button
@@ -100,13 +120,7 @@ function LoginContent() {
             </button>
           </form>
 
-          <div className="mt-6 text-center text-sm">
-            <Link href="/auth/reset-password" className="text-blue-600 hover:underline">
-              Mot de passe oublié ?
-            </Link>
-          </div>
-
-          <div className="mt-4 text-center text-sm text-gray-600">
+          <div className="mt-6 text-center text-sm text-gray-600">
             Pas encore de compte ?{' '}
             <Link href="/auth/register" className="text-green-600 font-semibold hover:underline">
               S'inscrire
@@ -115,13 +129,5 @@ function LoginContent() {
         </div>
       </div>
     </div>
-  );
-}
-
-export default function LoginPage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Chargement...</div>}>
-      <LoginContent />
-    </Suspense>
   );
 }

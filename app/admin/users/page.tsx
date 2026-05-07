@@ -16,7 +16,7 @@ type User = {
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
-  const [filteredUsers, setFilteredUsers]  = useState<User[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
@@ -50,7 +50,6 @@ export default function AdminUsersPage() {
 
   const applyFilters = () => {
     let filtered = [...users];
-
     if (searchTerm) {
       filtered = filtered.filter(
         (u) =>
@@ -74,7 +73,6 @@ export default function AdminUsersPage() {
       endDate.setHours(23, 59, 59);
       filtered = filtered.filter((u) => new Date(u.created_at) <= endDate);
     }
-
     setFilteredUsers(filtered);
     setCurrentPage(1);
   };
@@ -89,10 +87,33 @@ export default function AdminUsersPage() {
     fetchUsers();
   };
 
-  const deleteUser = async (userId: string) => {
-    if (confirm('⚠️ Supprimer définitivement cet utilisateur ? Cette action est irréversible.')) {
-      await supabase.from('profiles').delete().eq('id', userId);
-      fetchUsers();
+  // Suppression définitive via API
+  const deleteUserPermanently = async (userId: string, email: string) => {
+    if (!confirm(`⚠️ Êtes-vous sûr de vouloir supprimer définitivement l'utilisateur ${email} ?\n\nToutes ses données (commandes, messages, transactions, etc.) seront perdues. Action irréversible.`)) return;
+
+    try {
+      // Récupérer le token d'accès
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      const res = await fetch('/api/admin/users/delete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        credentials: 'include', // crucial pour les cookies
+        body: JSON.stringify({ userId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('✅ Utilisateur supprimé définitivement');
+        fetchUsers(); // recharge la liste
+      } else {
+        alert('❌ Erreur : ' + (data.message || data.error));
+      }
+    } catch (err) {
+      alert('Erreur réseau : ' + err);
     }
   };
 
@@ -154,25 +175,15 @@ export default function AdminUsersPage() {
         </div>
       </div>
 
-      {/* Filtres et recherche (avec dates) */}
+      {/* Filtres */}
       <div className="bg-white p-4 rounded-xl shadow mb-6 flex flex-wrap gap-3 items-end">
         <div className="flex-1 min-w-[180px]">
           <label className="block text-sm font-medium text-gray-700 mb-1">🔍 Rechercher</label>
-          <input
-            type="text"
-            placeholder="Email ou nom..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full px-3 py-2 border rounded-lg"
-          />
+          <input type="text" placeholder="Email ou nom..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full px-3 py-2 border rounded-lg" />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">📌 Rôle</label>
-          <select
-            value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
-            className="px-3 py-2 border rounded-lg"
-          >
+          <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="px-3 py-2 border rounded-lg">
             <option value="all">Tous</option>
             <option value="admin">Admin</option>
             <option value="seller">Producteur</option>
@@ -181,11 +192,7 @@ export default function AdminUsersPage() {
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">🚦 Statut</label>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 border rounded-lg"
-          >
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-3 py-2 border rounded-lg">
             <option value="all">Tous</option>
             <option value="active">Actif</option>
             <option value="banned">Banni</option>
@@ -193,35 +200,14 @@ export default function AdminUsersPage() {
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">📅 Du</label>
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-            className="px-3 py-2 border rounded-lg"
-          />
+          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="px-3 py-2 border rounded-lg" />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">📅 Au</label>
-          <input
-            type="date"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-            className="px-3 py-2 border rounded-lg"
-          />
+          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="px-3 py-2 border rounded-lg" />
         </div>
         <div>
-          <button
-            onClick={() => {
-              setSearchTerm('');
-              setRoleFilter('all');
-              setStatusFilter('all');
-              setDateFrom('');
-              setDateTo('');
-            }}
-            className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600"
-          >
-            Réinitialiser
-          </button>
+          <button onClick={() => { setSearchTerm(''); setRoleFilter('all'); setStatusFilter('all'); setDateFrom(''); setDateTo(''); }} className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600">Réinitialiser</button>
         </div>
       </div>
 
@@ -243,13 +229,7 @@ export default function AdminUsersPage() {
               <tr key={user.id} className="hover:bg-gray-50">
                 <td className="p-3">
                   {editingId === user.id ? (
-                    <input
-                      type="text"
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                      className="border rounded px-2 py-1 w-full"
-                      placeholder="Nom"
-                    />
+                    <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className="border rounded px-2 py-1 w-full" placeholder="Nom" />
                   ) : (
                     <div>
                       <div className="font-medium">{user.full_name || '—'}</div>
@@ -258,17 +238,7 @@ export default function AdminUsersPage() {
                   )}
                 </td>
                 <td className="p-3">
-                  <select
-                    value={user.role}
-                    onChange={(e) => updateRole(user.id, e.target.value)}
-                    className={`px-2 py-1 rounded text-sm border ${
-                      user.role === 'admin'
-                        ? 'bg-red-100 text-red-700'
-                        : user.role === 'seller'
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-blue-100 text-blue-700'
-                    }`}
-                  >
+                  <select value={user.role} onChange={(e) => updateRole(user.id, e.target.value)} className={`px-2 py-1 rounded text-sm border ${user.role === 'admin' ? 'bg-red-100 text-red-700' : user.role === 'seller' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
                     <option value="buyer">Acheteur</option>
                     <option value="seller">Producteur</option>
                     <option value="admin">Admin</option>
@@ -276,60 +246,35 @@ export default function AdminUsersPage() {
                 </td>
                 <td className="p-3">
                   {editingId === user.id ? (
-                    <input
-                      type="tel"
-                      value={editPhone}
-                      onChange={(e) => setEditPhone(e.target.value)}
-                      className="border rounded px-2 py-1 w-full"
-                      placeholder="Téléphone"
-                    />
+                    <input type="tel" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} className="border rounded px-2 py-1 w-full" placeholder="Téléphone" />
                   ) : (
                     user.phone || '—'
                   )}
                 </td>
                 <td className="p-3">
-                  <span
-                    className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${
-                      user.is_banned ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
-                    }`}
-                  >
+                  <span className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${user.is_banned ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
                     {user.is_banned ? 'Banni' : 'Actif'}
                   </span>
                 </td>
-                <td className="p-3 text-sm text-gray-500">
-                  {new Date(user.created_at).toLocaleDateString()}
-                </td>
+                <td className="p-3 text-sm text-gray-500">{new Date(user.created_at).toLocaleDateString()}</td>
                 <td className="p-3">
                   <div className="flex gap-2 flex-wrap">
                     {editingId === user.id ? (
                       <>
-                        <button onClick={() => saveInlineEdit(user.id)} className="text-green-600 text-sm hover:underline">
-                          💾 Sauvegarder
-                        </button>
-                        <button onClick={() => setEditingId(null)} className="text-gray-500 text-sm hover:underline">
-                          Annuler
-                        </button>
+                        <button onClick={() => saveInlineEdit(user.id)} className="text-green-600 text-sm hover:underline">💾 Sauvegarder</button>
+                        <button onClick={() => setEditingId(null)} className="text-gray-500 text-sm hover:underline">Annuler</button>
                       </>
                     ) : (
-                      <button onClick={() => startEdit(user)} className="text-blue-600 text-sm hover:underline">
-                        ✏️ Modifier
-                      </button>
+                      <button onClick={() => startEdit(user)} className="text-blue-600 text-sm hover:underline">✏️ Modifier</button>
                     )}
-                    <button
-                      onClick={() => toggleBan(user.id, !!user.is_banned)}
-                      className={`text-sm ${user.is_banned ? 'text-green-600' : 'text-orange-600'} hover:underline`}
-                    >
+                    <button onClick={() => toggleBan(user.id, !!user.is_banned)} className={`text-sm ${user.is_banned ? 'text-green-600' : 'text-orange-600'} hover:underline`}>
                       {user.is_banned ? '🔓 Débannir' : '🔒 Bannir'}
                     </button>
-                    <button onClick={() => deleteUser(user.id)} className="text-red-600 text-sm hover:underline">
-                      🗑️ Supprimer
+                    <button onClick={() => deleteUserPermanently(user.id, user.email)} className="text-red-600 text-sm hover:underline">
+                      🗑️ Supprimer définitivement
                     </button>
-                    <Link href={`/admin/messages?user=${user.id}`} className="text-blue-600 text-sm hover:underline">
-                      💬 Messages
-                    </Link>
-                    <Link href={`/admin/orders?user=${user.id}`} className="text-green-600 text-sm hover:underline">
-                      📦 Commandes
-                    </Link>
+                    <Link href={`/admin/messages?user=${user.id}`} className="text-blue-600 text-sm hover:underline">💬 Messages</Link>
+                    <Link href={`/admin/orders?user=${user.id}`} className="text-green-600 text-sm hover:underline">📦 Commandes</Link>
                   </div>
                 </td>
               </tr>
@@ -338,7 +283,7 @@ export default function AdminUsersPage() {
         </table>
       </div>
 
-      {/* Version mobile : cartes */}
+      {/* Version mobile cartes */}
       <div className="md:hidden space-y-4">
         {currentUsers.map((user) => (
           <div key={user.id} className="bg-white rounded-xl shadow p-4 border">
@@ -347,51 +292,30 @@ export default function AdminUsersPage() {
                 <h3 className="font-semibold text-gray-800">{user.full_name || '—'}</h3>
                 <p className="text-sm text-gray-500">{user.email}</p>
               </div>
-              <span
-                className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                  user.is_banned ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
-                }`}
-              >
+              <span className={`px-2 py-1 rounded-full text-xs font-semibold ${user.is_banned ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
                 {user.is_banned ? 'Banni' : 'Actif'}
               </span>
             </div>
             <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
               <div>
                 <span className="text-gray-500">Rôle :</span>{' '}
-                <select
-                  value={user.role}
-                  onChange={(e) => updateRole(user.id, e.target.value)}
-                  className="text-sm border rounded px-1"
-                >
+                <select value={user.role} onChange={(e) => updateRole(user.id, e.target.value)} className="text-sm border rounded px-1">
                   <option value="buyer">Acheteur</option>
                   <option value="seller">Producteur</option>
                   <option value="admin">Admin</option>
                 </select>
               </div>
-              <div>
-                <span className="text-gray-500">Tél :</span> {user.phone || '—'}
-              </div>
-              <div className="col-span-2">
-                <span className="text-gray-500">Inscrit :</span> {new Date(user.created_at).toLocaleDateString()}
-              </div>
+              <div><span className="text-gray-500">Tél :</span> {user.phone || '—'}</div>
+              <div className="col-span-2"><span className="text-gray-500">Inscrit :</span> {new Date(user.created_at).toLocaleDateString()}</div>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
-              <button
-                onClick={() => toggleBan(user.id, !!user.is_banned)}
-                className={`text-xs px-2 py-1 rounded ${
-                  user.is_banned ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
-                }`}
-              >
+              <button onClick={() => toggleBan(user.id, !!user.is_banned)} className={`text-xs px-2 py-1 rounded ${user.is_banned ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
                 {user.is_banned ? '🔓 Débannir' : '🔒 Bannir'}
               </button>
-              <Link href={`/admin/messages?user=${user.id}`} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
-                💬 Messages
-              </Link>
-              <Link href={`/admin/orders?user=${user.id}`} className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
-                📦 Commandes
-              </Link>
-              <button onClick={() => deleteUser(user.id)} className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded">
-                🗑️ Supprimer
+              <Link href={`/admin/messages?user=${user.id}`} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">💬 Messages</Link>
+              <Link href={`/admin/orders?user=${user.id}`} className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">📦 Commandes</Link>
+              <button onClick={() => deleteUserPermanently(user.id, user.email)} className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded">
+                🗑️ Supprimer définitivement
               </button>
             </div>
           </div>
@@ -401,23 +325,9 @@ export default function AdminUsersPage() {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex justify-center gap-2 mt-6">
-          <button
-            disabled={currentPage === 1}
-            onClick={() => setCurrentPage((p) => p - 1)}
-            className="px-3 py-1 border rounded disabled:opacity-50"
-          >
-            Précédent
-          </button>
-          <span className="px-3 py-1">
-            Page {currentPage} / {totalPages}
-          </span>
-          <button
-            disabled={currentPage === totalPages}
-            onClick={() => setCurrentPage((p) => p + 1)}
-            className="px-3 py-1 border rounded disabled:opacity-50"
-          >
-            Suivant
-          </button>
+          <button disabled={currentPage === 1} onClick={() => setCurrentPage((p) => p - 1)} className="px-3 py-1 border rounded disabled:opacity-50">Précédent</button>
+          <span className="px-3 py-1">Page {currentPage} / {totalPages}</span>
+          <button disabled={currentPage === totalPages} onClick={() => setCurrentPage((p) => p + 1)} className="px-3 py-1 border rounded disabled:opacity-50">Suivant</button>
         </div>
       )}
     </div>

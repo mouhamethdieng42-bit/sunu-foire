@@ -21,8 +21,21 @@ export default function RegisterPage() {
     setLoading(true);
     setError('');
 
-    // 1. Créer l'utilisateur
-    const { data: authData, error: authError } = await supabase.auth.signUp({
+    // 1. Vérifier si l'email existe déjà dans la table profiles
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('email')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (existingProfile) {
+      setError('Cet email est déjà utilisé. Veuillez vous connecter ou utiliser un autre email.');
+      setLoading(false);
+      return;
+    }
+
+    // 2. Tenter l'inscription via Supabase Auth
+    const { error: authError } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -35,29 +48,18 @@ export default function RegisterPage() {
     });
 
     if (authError) {
-      setError(authError.message);
+      // Gestion des erreurs (email déjà existant dans Auth)
+      if (authError.message.includes('already registered')) {
+        setError('Cet email est déjà utilisé. Veuillez vous connecter ou utiliser un autre email.');
+      } else {
+        setError(authError.message);
+      }
       setLoading(false);
       return;
     }
 
-    if (authData.user) {
-      // 2. Attendre un peu que le trigger crée le profil
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // 3. Mettre à jour manuellement le rôle
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ role: role })
-        .eq('id', authData.user.id);
-
-      if (updateError) {
-        console.error('Erreur mise à jour rôle:', updateError);
-      }
-    }
-
-    // 4. Succès
-    alert('✅ Inscription réussie ! Vérifiez votre email pour confirmer votre compte.');
-    router.push('/auth/login');
+    // 3. Succès : rediriger vers la page de confirmation d'email
+    router.push(`/auth/check-email?email=${encodeURIComponent(email)}`);
     setLoading(false);
   };
 
