@@ -181,15 +181,16 @@ export default function AdminSettingsPage() {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 pb-8">
-        {/* Navigation par onglets */}
+        {/* Navigation par onglets - AJOUT de l'onglet "Transactions" */}
         <div className="flex gap-2 mb-6 border-b overflow-x-auto bg-white p-2 rounded-t-xl">
           <button onClick={() => setActiveTab('invoice')} className={`px-4 py-2 font-semibold rounded-lg transition ${activeTab === 'invoice' ? 'bg-green-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>📄 Facture</button>
+          <button onClick={() => setActiveTab('transactions')} className={`px-4 py-2 font-semibold rounded-lg transition ${activeTab === 'transactions' ? 'bg-green-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>💰 Transactions</button>
           <button onClick={() => setActiveTab('categories')} className={`px-4 py-2 font-semibold rounded-lg transition ${activeTab === 'categories' ? 'bg-green-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>🏷️ Catégories</button>
           <button onClick={() => setActiveTab('carousel')} className={`px-4 py-2 font-semibold rounded-lg transition ${activeTab === 'carousel' ? 'bg-green-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>🖼️ Carrousel</button>
           <button onClick={() => setActiveTab('promo')} className={`px-4 py-2 font-semibold rounded-lg transition ${activeTab === 'promo' ? 'bg-green-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>📢 Promotion</button>
         </div>
 
-        {/* Onglet Facture */}
+        {/* Onglet Facture - inchangé */}
         {activeTab === 'invoice' && (
           <div className="bg-white rounded-xl shadow-sm p-6">
             <h2 className="text-lg font-bold mb-4 pb-2 border-b">Informations légales</h2>
@@ -205,7 +206,45 @@ export default function AdminSettingsPage() {
           </div>
         )}
 
-        {/* Onglet Catégories */}
+        {/* NOUVEL ONGLET : Transactions */}
+        {activeTab === 'transactions' && (
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <h2 className="text-lg font-bold mb-4 pb-2 border-b">💰 Paramètres financiers</h2>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block font-medium mb-1">Commission par défaut (%)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={settings.default_commission_rate || '5'}
+                  onChange={(e) => updateSetting('default_commission_rate', e.target.value)}
+                  className="w-full p-2 border rounded-lg"
+                />
+                <p className="text-xs text-gray-500">Prélevé sur chaque vente (vendeur)</p>
+              </div>
+              <div>
+                <label className="block font-medium mb-1">Montant minimum dépôt (FCFA)</label>
+                <input
+                  type="number"
+                  value={settings.min_deposit_amount || '500'}
+                  onChange={(e) => updateSetting('min_deposit_amount', e.target.value)}
+                  className="w-full p-2 border rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="block font-medium mb-1">Montant minimum retrait (FCFA)</label>
+                <input
+                  type="number"
+                  value={settings.min_withdrawal_amount || '1000'}
+                  onChange={(e) => updateSetting('min_withdrawal_amount', e.target.value)}
+                  className="w-full p-2 border rounded-lg"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Onglet Catégories - inchangé */}
         {activeTab === 'categories' && (
           <div className="bg-white rounded-xl shadow-sm p-6">
             <h2 className="text-lg font-bold mb-4 pb-2 border-b">Images des catégories</h2>
@@ -224,7 +263,7 @@ export default function AdminSettingsPage() {
           </div>
         )}
 
-        {/* Onglet Carrousel */}
+        {/* Onglet Carrousel - inchangé */}
         {activeTab === 'carousel' && (
           <div className="bg-white rounded-xl shadow-sm p-6">
             <h2 className="text-lg font-bold mb-4 pb-2 border-b">Images du carrousel</h2>
@@ -246,7 +285,7 @@ export default function AdminSettingsPage() {
           </div>
         )}
 
-        {/* Onglet Promotion */}
+        {/* Onglet Promotion - inchangé */}
         {activeTab === 'promo' && (
           <div className="bg-white rounded-xl shadow-sm p-6">
             <h2 className="text-lg font-bold mb-4 pb-2 border-b">Bandeau promotionnel</h2>

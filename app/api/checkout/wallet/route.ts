@@ -1,33 +1,44 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
+import { sendEmail, getBaseTemplate } from '@/lib/brevo';
 
 export async function POST(request: Request) {
   try {
-    const authHeader = request.headers.get('Authorization');
-    const token = authHeader?.replace('Bearer ', '');
-    if (!token) {
-      return NextResponse.json({ error: 'Token manquant' }, { status: 401 });
-    }
-
-    // Créer un client Supabase avec le token dans les headers
-    const supabase = createServerClient(
+    const cookieStore = await cookies();
+    let supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         cookies: {
-          get() { return ''; },
+          get(name: string) { return cookieStore.get(name)?.value; },
           set() {},
           remove() {},
-        },
-        global: {
-          headers: { Authorization: `Bearer ${token}` },
         },
       }
     );
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    // 1. Vérifier l'utilisateur connecté
+    let { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
-      console.error('Auth error:', userError);
+      // Fallback token si cookie absent
+      const authHeader = request.headers.get('Authorization');
+      const token = authHeader?.replace('Bearer ', '');
+      if (token) {
+        supabase = createServerClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+          {
+            cookies: { get() { return ''; }, set() {}, remove() {} },
+            global: { headers: { Authorization: `Bearer ${token}` } },
+          }
+        );
+        const { data: { user: tokenUser }, error: tokenError } = await supabase.auth.getUser();
+        if (!tokenError && tokenUser) user = tokenUser;
+      }
+    }
+
+    if (!user) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
 
@@ -36,7 +47,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Données incomplètes' }, { status: 400 });
     }
 
-    // Vérifier le solde si paiement portefeuille
+    // 2. Vérifier le solde si paiement portefeuille
     if (payment_method === 'wallet') {
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
@@ -49,7 +60,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // 1. Créer la commande
+    // 3. Créer la commande
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .insert({
@@ -63,9 +74,10 @@ export async function POST(request: Request) {
       })
       .select()
       .single();
+
     if (orderError) throw orderError;
 
-    // 2. Ajouter les articles
+    // 4. Ajouter les articles
     for (const item of items) {
       const { error: itemError } = await supabase
         .from('order_items')
@@ -78,9 +90,10 @@ export async function POST(request: Request) {
       if (itemError) throw itemError;
     }
 
-    // 3. Gérer le paiement portefeuille (séquestre)
+    // 5. Gérer le paiement portefeuille (séquestre)
     if (payment_method === 'wallet') {
       const reference = `ORDER_${order.id}_${Date.now()}`;
+      // Transaction payment status held
       const { error: txError } = await supabase
         .from('transactions')
         .insert({
@@ -107,15 +120,50 @@ export async function POST(request: Request) {
         .eq('id', buyer_id);
       if (updateError) throw updateError;
 
+      // Mettre à jour la commande
       await supabase
         .from('orders')
         .update({ status: 'processing', payment_status: 'held' })
         .eq('id', order.id);
+
+      // 🔔 Envoyer email de confirmation à l'acheteur
+      if (user.email) {
+        await sendEmail({
+          to: user.email,
+          subject: `Confirmation de commande #${order.id.slice(0, 8)}`,
+          htmlContent: getBaseTemplate(`
+            <h2>Commande confirmée</h2>
+            <p>Bonjour,</p>
+            <p>Votre commande #${order.id.slice(0, 8)} a bien été enregistrée.</p>
+            <p><strong>Montant total :</strong> ${order.total_amount.toLocaleString()} FCFA</p>
+            <p><strong>Mode de paiement :</strong> portefeuille (séquestre)</p>
+            <p>Les fonds seront bloqués jusqu'à ce que vous confirmiez la réception de votre commande.</p>
+            <p>Vous serez notifié(e) dès que le vendeur aura expédié vos articles.</p>
+          `),
+        });
+      } else {
+        console.error('Email utilisateur manquant, impossible d’envoyer la confirmation');
+      }
     } else {
+      // Paiement par carte / simulation (sans séquestre)
       await supabase
         .from('orders')
         .update({ status: 'processing', payment_status: 'paid' })
         .eq('id', order.id);
+
+      // Email pour le paiement par carte (simulation)
+      if (user.email) {
+        await sendEmail({
+          to: user.email,
+          subject: `Confirmation de commande #${order.id.slice(0, 8)}`,
+          htmlContent: getBaseTemplate(`
+            <h2>Commande confirmée (paiement par carte)</h2>
+            <p>Votre commande #${order.id.slice(0, 8)} a été payée avec succès.</p>
+            <p>Montant : ${order.total_amount.toLocaleString()} FCFA</p>
+            <p>Nous vous tiendrons informé de l’expédition.</p>
+          `),
+        });
+      }
     }
 
     return NextResponse.json({ success: true, orderId: order.id });

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { sendEmail, getBaseTemplate } from '@/lib/brevo';
 
 export async function POST(request: Request) {
   try {
@@ -18,8 +19,8 @@ export async function POST(request: Request) {
       }
     );
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
 
@@ -28,7 +29,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Montant minimum 500 FCFA' }, { status: 400 });
     }
 
-    // Vérifier le solde
+    // Vérifier solde
     const { data: profile, error: fetchError } = await supabase
       .from('profiles')
       .select('wallet_balance')
@@ -41,33 +42,46 @@ export async function POST(request: Request) {
 
     const reference = `WITHDRAW_${Date.now()}_${user.id.slice(0, 6)}`;
 
-    // Créer la transaction
-    const { error: txError } = await supabase
-      .from('transactions')
-      .insert({
-        user_id: user.id,
-        type: 'withdrawal',
-        amount,
-        status: 'pending',
-        payment_method: paymentMethod,
-        reference,
-        description: 'Retrait simulé (en attente)',
-      });
-    if (txError) throw txError;
+    // Créer transaction
+    await supabase.from('transactions').insert({
+      user_id: user.id,
+      type: 'withdrawal',
+      amount,
+      status: 'pending',
+      payment_method: paymentMethod,
+      reference,
+      description: 'Retrait simulé (en attente)',
+    });
 
     // Débiter le solde
     const newBalance = (profile?.wallet_balance || 0) - amount;
-    const { error: updateError } = await supabase
+    await supabase
       .from('profiles')
       .update({ wallet_balance: newBalance })
       .eq('id', user.id);
-    if (updateError) throw updateError;
 
-    // Simuler la validation du retrait (passer à 'completed')
+    // Simuler validation
     await supabase
       .from('transactions')
       .update({ status: 'completed' })
       .eq('reference', reference);
+
+    // Envoyer email
+    if (user.email) {
+      await sendEmail({
+        to: user.email,
+        subject: 'Retrait effectué depuis votre portefeuille',
+        htmlContent: getBaseTemplate(`
+          <h2>Retrait enregistré</h2>
+          <p>Bonjour,</p>
+          <p>Un retrait de <strong>${amount.toLocaleString()} FCFA</strong> a été effectué via ${paymentMethod}.</p>
+          <p>Nouveau solde : <strong>${newBalance.toLocaleString()} FCFA</strong></p>
+          <p>Merci de votre confiance.</p>
+        `),
+      });
+    } else {
+      console.error('Email utilisateur manquant');
+    }
 
     return NextResponse.json({ success: true, newBalance, reference });
   } catch (error: any) {
