@@ -3,6 +3,7 @@
 import { supabase } from '@/lib/supabase';
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 type OrderItem = {
   id: string;
@@ -39,6 +40,7 @@ export default function OrderDetailPage() {
   }, [id]);
 
   const fetchOrder = async () => {
+    setLoading(true);
     const { data, error } = await supabase
       .from('orders')
       .select(`
@@ -69,7 +71,6 @@ export default function OrderDetailPage() {
 
     setConfirming(true);
 
-    // Récupérer le token
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     if (sessionError) {
       alert('Erreur de session : ' + sessionError.message);
@@ -88,8 +89,6 @@ export default function OrderDetailPage() {
       return;
     }
 
-    // Appel API
-    let data;
     try {
       const res = await fetch('/api/orders/confirm', {
         method: 'POST',
@@ -100,11 +99,11 @@ export default function OrderDetailPage() {
         body: JSON.stringify({ orderId: id }),
       });
 
-      data = await res.json();
+      const data = await res.json();
 
       if (res.ok) {
-        alert('✅ Confirmation enregistrée. Merci ! Le vendeur va être payé.');
-        router.push('/account/orders');
+        alert('✅ Confirmation enregistrée. Merci !');
+        await fetchOrder(); // Recharge la commande
       } else {
         alert(`Erreur : ${data.error || 'Une erreur est survenue'}`);
       }
@@ -116,16 +115,12 @@ export default function OrderDetailPage() {
     }
   };
 
-  if (loading) {
-    return <div className="p-8 text-center">Chargement de la commande...</div>;
-  }
+  if (loading) return <div className="p-8 text-center">Chargement de la commande...</div>;
+  if (!order) return <div className="p-8 text-center">Commande introuvable</div>;
 
-  if (!order) {
-    return <div className="p-8 text-center">Commande introuvable</div>;
-  }
-
-  const isWalletHeld = order.payment_method === 'wallet' && order.payment_status === 'held' && order.status === 'processing';
-  const canConfirm = isWalletHeld;
+  // Le bouton apparaît si : paiement wallet, séquestre actif, commande expédiée
+  const canConfirm = order.payment_method === 'wallet' && order.payment_status === 'held' && order.status === 'shipped';
+  const isDelivered = order.status === 'delivered';
 
   return (
     <div className="p-4 md:p-8 max-w-3xl mx-auto">
@@ -182,9 +177,24 @@ export default function OrderDetailPage() {
           >
             {confirming ? 'Traitement...' : '📦 J’ai reçu ma commande (libérer les fonds)'}
           </button>
-          <p className="text-xs text-gray-500 mt-2">
-            Une fois confirmé, le vendeur sera payé et vous ne pourrez plus revenir en arrière.
-          </p>
+          <p className="text-xs text-gray-500 mt-2">Une fois confirmé, le vendeur sera payé.</p>
+        </div>
+      )}
+
+      {isDelivered && (
+        <div className="mt-8 p-4 bg-green-50 border border-green-200 rounded-lg text-center">
+          <p className="text-green-700 font-semibold">✅ Commande livrée. Merci !</p>
+          <div className="mt-3 flex flex-wrap justify-center gap-3">
+            {order.order_items.map((item) => (
+              <Link
+                key={item.id}
+                href={`/reviews/new?product_id=${item.product_id}&order_id=${order.id}`}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm"
+              >
+                ⭐ Laisser un avis sur {item.products?.name}
+              </Link>
+            ))}
+          </div>
         </div>
       )}
     </div>

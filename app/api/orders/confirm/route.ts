@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const authHeader = request.headers.get('Authorization');
     const token = authHeader?.replace('Bearer ', '');
@@ -36,8 +36,7 @@ export async function POST(request: Request) {
         order_items (
           quantity,
           unit_price,
-          product_id,
-          products (seller_id, name)
+          product:products (seller_id, name)
         )
       `)
       .eq('id', orderId)
@@ -47,12 +46,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Commande introuvable' }, { status: 404 });
     }
 
-    // Vérifier l'éligibilité
-    if (order.payment_method !== 'wallet' || order.payment_status !== 'held' || order.status !== 'processing') {
-      return NextResponse.json({ error: 'Commande non éligible à la confirmation' }, { status: 400 });
+    // 2. Vérifier l'éligibilité
+    if (order.payment_method !== 'wallet' || order.payment_status !== 'held') {
+      return NextResponse.json({ error: 'Commande non éligible (pas en séquestre)' }, { status: 400 });
+    }
+    if (order.status !== 'processing' && order.status !== 'shipped') {
+      return NextResponse.json({ error: 'Commande non encore expédiée' }, { status: 400 });
     }
 
-    // 2. Récupérer la transaction séquestre
+    // 3. Récupérer la transaction séquestre
     const { data: transaction, error: txError } = await supabase
       .from('transactions')
       .select('*')
@@ -66,13 +68,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Transaction séquestre introuvable' }, { status: 404 });
     }
 
-    // 3. Déterminer le vendeur (on suppose un seul vendeur par commande)
-    const sellerId = order.order_items[0]?.products?.seller_id;
+    // 4. Déterminer le vendeur (on suppose un seul vendeur par commande)
+    const sellerId = order.order_items[0]?.product?.seller_id;
     if (!sellerId) {
       return NextResponse.json({ error: 'Vendeur introuvable' }, { status: 500 });
     }
 
-    // 4. Récupérer la commission
+    // 5. Commission
     const { data: commissionSetting } = await supabase
       .from('commission_settings')
       .select('value')
@@ -82,7 +84,7 @@ export async function POST(request: Request) {
     const commissionAmount = Math.floor(order.total_amount * commissionRate);
     const sellerAmount = order.total_amount - commissionAmount;
 
-    // 5. Créditer le vendeur
+    // 6. Créditer le vendeur
     const { data: sellerProfile } = await supabase
       .from('profiles')
       .select('wallet_balance')
@@ -94,7 +96,7 @@ export async function POST(request: Request) {
       .update({ wallet_balance: newSellerBalance })
       .eq('id', sellerId);
 
-    // 6. Créer la transaction commission
+    // 7. Créer la transaction commission
     const commissionRef = `COMM_${order.id}_${Date.now()}`;
     await supabase.from('transactions').insert({
       user_id: sellerId,
@@ -106,21 +108,23 @@ export async function POST(request: Request) {
       description: `Commission sur commande ${order.id}`,
     });
 
-    // 7. Marquer la transaction séquestre comme complétée
+    // 8. Marquer la transaction séquestre comme complétée
     await supabase
       .from('transactions')
       .update({ status: 'completed' })
       .eq('id', transaction.id);
 
-    // 8. Mettre à jour la commande
-    await supabase
+    // 9. Mettre à jour la commande
+    const { error: updateError } = await supabase
       .from('orders')
       .update({ status: 'delivered', payment_status: 'completed' })
       .eq('id', order.id);
 
+    if (updateError) throw updateError;
+
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error('Erreur API:', error);
+    console.error('Erreur API confirm:', error);
     return NextResponse.json({ error: error.message || 'Erreur serveur' }, { status: 500 });
   }
 }

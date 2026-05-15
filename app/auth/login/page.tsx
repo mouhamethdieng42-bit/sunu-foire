@@ -104,6 +104,15 @@ function LoginForm() {
                   {showPassword ? '🙈' : '👁️'}
                 </button>
               </div>
+              {/* Lien Mot de passe oublié */}
+              <div className="text-right mt-1">
+                <Link
+                  href="/auth/reset-password"
+                  className="text-sm text-green-600 hover:underline"
+                >
+                  Mot de passe oublié ?
+                </Link>
+              </div>
             </div>
 
             {error && (
