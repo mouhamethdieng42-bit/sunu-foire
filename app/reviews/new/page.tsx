@@ -1,11 +1,13 @@
 'use client';
 
+import { Suspense } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-export default function NewReviewPage() {
+// Composant interne qui utilise useSearchParams
+function NewReviewForm() {
   const searchParams = useSearchParams();
   const productId = searchParams.get('product_id');
   const orderId = searchParams.get('order_id');
@@ -27,7 +29,6 @@ export default function NewReviewPage() {
   }, [productId]);
 
   const fetchProductAndReview = async () => {
-    // Récupérer le produit
     const { data: prod } = await supabase
       .from('products')
       .select('name, seller_id')
@@ -35,7 +36,6 @@ export default function NewReviewPage() {
       .single();
     setProduct(prod);
 
-    // Vérifier si l'utilisateur a déjà laissé un avis
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       const { data: review } = await supabase
@@ -137,5 +137,14 @@ export default function NewReviewPage() {
         </button>
       </form>
     </div>
+  );
+}
+
+// Composant principal avec Suspense
+export default function NewReviewPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center">Chargement...</div>}>
+      <NewReviewForm />
+    </Suspense>
   );
 }
