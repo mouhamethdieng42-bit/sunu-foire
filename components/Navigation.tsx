@@ -69,7 +69,6 @@ export default function Navigation() {
               🌾 SUNU FOIRE
             </Link>
 
-            {/* Bouton burger (mobile) */}
             <button
               onClick={() => setDrawerOpen(true)}
               className="md:hidden text-2xl focus:outline-none"
@@ -77,7 +76,6 @@ export default function Navigation() {
               ☰
             </button>
 
-            {/* Menu desktop */}
             <div className="hidden md:flex gap-6 items-center">
               <DesktopMenu
                 user={user}
@@ -93,7 +91,6 @@ export default function Navigation() {
         </div>
       </nav>
 
-      {/* Drawer mobile */}
       <MobileDrawer
         isOpen={drawerOpen}
         onClose={() => setDrawerOpen(false)}
@@ -108,7 +105,6 @@ export default function Navigation() {
   );
 }
 
-// --- Desktop Menu with smooth dropdowns ---
 function DesktopMenu({
   user,
   role,
@@ -139,7 +135,6 @@ function DesktopMenu({
 
       {user ? (
         <>
-          {/* Mon compte dropdown */}
           <div
             className="relative"
             onMouseEnter={() => onMouseEnter('account')}
@@ -175,16 +170,14 @@ function DesktopMenu({
                 💬 Messages
               </Link>
               <Link href="/user/profile" className="block px-4 py-2 hover:bg-green-50 hover:text-green-700 transition">
-  👤 Mon profil
-</Link>
-              {/* Lien Portefeuille ajouté */}
+                👤 Mon profil
+              </Link>
               <Link href="/wallet" className="block px-4 py-2 hover:bg-green-50 hover:text-green-700 transition">
                 💰 Portefeuille
               </Link>
             </div>
           </div>
 
-          {/* Administration dropdown (admin only) */}
           {isAdmin && (
             <div
               className="relative"
@@ -204,7 +197,7 @@ function DesktopMenu({
                     : 'opacity-0 scale-95 pointer-events-none'
                 }`}
               >
-                <Link href="/admin" className="block px-4 py-2 hover:bg-green-50 hover:text-green-700 transition">
+                <Link href="/admin/dashboard" className="block px-4 py-2 hover:bg-green-50 hover:text-green-700 transition">
                   📊 Tableau de bord
                 </Link>
                 <Link href="/admin/settings" className="block px-4 py-2 hover:bg-green-50 hover:text-green-700 transition">
@@ -232,7 +225,6 @@ function DesktopMenu({
   );
 }
 
-// --- Mobile Drawer (menu latéral avec accordéons) ---
 function MobileDrawer({
   isOpen,
   onClose,
@@ -247,7 +239,6 @@ function MobileDrawer({
   const isSeller = role === 'seller';
   const isBuyer = role === 'buyer';
 
-  // Fermeture avec la touche Échap
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) onClose();
@@ -262,14 +253,12 @@ function MobileDrawer({
 
   return (
     <>
-      {/* Overlay (léger avec flou) */}
       <div
         className={`fixed inset-0 bg-black/20 backdrop-blur-sm z-50 transition-opacity duration-300 ${
           isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
         onClick={onClose}
       />
-      {/* Drawer panel (droite) */}
       <div
         className={`fixed top-0 right-0 h-full w-80 sm:w-96 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-out ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
@@ -291,7 +280,6 @@ function MobileDrawer({
 
           {user ? (
             <>
-              {/* Mon compte (accordéon) */}
               <div>
                 <button onClick={() => toggleSection('account')} className={sectionButtonClass}>
                   <span>👤 Mon compte</span>
@@ -325,9 +313,8 @@ function MobileDrawer({
                       💬 Messages
                     </Link>
                     <Link href="/user/profile" className="block py-2 px-4 rounded hover:bg-green-50 hover:text-green-700 transition" onClick={onClose}>
-  👤 Mon profil
-</Link>
-                    {/* Lien Portefeuille ajouté */}
+                      👤 Mon profil
+                    </Link>
                     <Link href="/wallet" className="block py-2 px-4 rounded hover:bg-green-50 hover:text-green-700 transition" onClick={onClose}>
                       💰 Portefeuille
                     </Link>
@@ -335,7 +322,6 @@ function MobileDrawer({
                 </div>
               </div>
 
-              {/* Administration (accordéon, admin only) */}
               {isAdmin && (
                 <div>
                   <button onClick={() => toggleSection('admin')} className={sectionButtonClass}>
@@ -353,7 +339,7 @@ function MobileDrawer({
                     className={`${dropdownTransition} ${openSection === 'admin' ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}
                   >
                     <div className="pl-4 flex flex-col gap-1 mt-1 pb-2">
-                      <Link href="/admin" className="block py-2 px-4 rounded hover:bg-green-50 hover:text-green-700 transition" onClick={onClose}>
+                      <Link href="/admin/dashboard" className="block py-2 px-4 rounded hover:bg-green-50 hover:text-green-700 transition" onClick={onClose}>
                         📊 Tableau de bord
                       </Link>
                       <Link href="/admin/settings" className="block py-2 px-4 rounded hover:bg-green-50 hover:text-green-700 transition" onClick={onClose}>
