@@ -84,11 +84,10 @@ export default function WalletPage() {
   const handleDeposit = async () => {
     setMessage(null);
     const amount = parseInt(depositAmount);
-    if (isNaN(amount) || amount < 500) {
-      setMessage({ type: 'error', text: 'Montant minimum 500 FCFA' });
+    if (isNaN(amount)) {
+      setMessage({ type: 'error', text: 'Montant invalide' });
       return;
     }
-
     setProcessing(true);
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
@@ -119,15 +118,14 @@ export default function WalletPage() {
   const handleWithdraw = async () => {
     setMessage(null);
     const amount = parseInt(withdrawAmount);
-    if (isNaN(amount) || amount < 500) {
-      setMessage({ type: 'error', text: 'Montant minimum 500 FCFA' });
+    if (isNaN(amount)) {
+      setMessage({ type: 'error', text: 'Montant invalide' });
       return;
     }
     if (amount > balance) {
       setMessage({ type: 'error', text: 'Solde insuffisant' });
       return;
     }
-
     setProcessing(true);
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
@@ -138,7 +136,7 @@ export default function WalletPage() {
     });
     const data = await res.json();
     if (res.ok) {
-      setMessage({ type: 'success', text: `Retrait de ${amount} FCFA demandé avec succès` });
+      setMessage({ type: 'success', text: `Retrait de ${amount} FCFA demandé` });
       setBalance(data.newBalance);
       setWithdrawAmount('');
       setShowWithdrawForm(false);
@@ -149,7 +147,7 @@ export default function WalletPage() {
     setProcessing(false);
   };
 
-  // Graphique : 7 derniers jours (cumul)
+  // Graphique des 7 derniers jours (cumul)
   const chartData = [...transactions]
     .reverse()
     .slice(-7)
@@ -181,29 +179,29 @@ export default function WalletPage() {
 
       <div className="max-w-6xl mx-auto px-4 pb-8">
         {message && (
-          <div className={`mb-6 p-3 rounded-lg text-center text-sm md:text-base ${
-            message.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
+          <div className={`mb-6 p-3 rounded-lg text-center text-sm ${
+            message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
           }`}>
             {message.text}
           </div>
         )}
 
-        <div className="flex flex-col md:flex-row gap-8">
-          {/* Colonne gauche (modale intégrée) */}
-          <div className="w-full md:w-1/3 space-y-6">
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Colonne gauche (solde et formulaires) */}
+          <div className="w-full lg:w-1/3 space-y-6">
             <div className="bg-white rounded-2xl shadow p-6 text-center">
               <p className="text-gray-500 text-sm">Solde disponible</p>
-              <p className="text-4xl md:text-5xl font-bold text-green-600">{balance.toLocaleString()} FCFA</p>
+              <p className="text-3xl md:text-4xl font-bold text-green-600 break-words">{balance.toLocaleString()} FCFA</p>
               <div className="flex flex-col sm:flex-row gap-3 mt-6">
                 <button
                   onClick={() => setShowDepositForm(true)}
-                  className="flex-1 bg-green-600 text-white px-4 py-2 rounded-xl hover:bg-green-700 transition"
+                  className="flex-1 bg-green-600 text-white px-4 py-2 rounded-xl hover:bg-green-700 transition text-sm"
                 >
                   💸 Déposer
                 </button>
                 <button
                   onClick={() => setShowWithdrawForm(true)}
-                  className="flex-1 bg-orange-600 text-white px-4 py-2 rounded-xl hover:bg-orange-700 transition"
+                  className="flex-1 bg-orange-600 text-white px-4 py-2 rounded-xl hover:bg-orange-700 transition text-sm"
                 >
                   📤 Retirer
                 </button>
@@ -215,7 +213,7 @@ export default function WalletPage() {
                 <h3 className="font-bold mb-3">Dépôt (simulation)</h3>
                 <input
                   type="number"
-                  placeholder="Montant (min 500 FCFA)"
+                  placeholder="Montant (FCFA)"
                   value={depositAmount}
                   onChange={(e) => setDepositAmount(e.target.value)}
                   className="w-full p-2 border rounded-lg mb-3"
@@ -238,7 +236,7 @@ export default function WalletPage() {
                 <h3 className="font-bold mb-3">Retrait (simulation)</h3>
                 <input
                   type="number"
-                  placeholder="Montant (min 500 FCFA)"
+                  placeholder="Montant (FCFA)"
                   value={withdrawAmount}
                   onChange={(e) => setWithdrawAmount(e.target.value)}
                   className="w-full p-2 border rounded-lg mb-3"
@@ -268,7 +266,7 @@ export default function WalletPage() {
             {chartData.length > 2 && (
               <div className="bg-white rounded-2xl shadow p-4">
                 <h3 className="font-semibold mb-2 text-sm">📈 Évolution récente (7 jours)</h3>
-                <div className="h-40 md:h-48">
+                <div className="h-48 md:h-56">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartData}>
                       <XAxis dataKey="date" tick={{ fontSize: 10 }} interval={0} />
@@ -283,7 +281,7 @@ export default function WalletPage() {
           </div>
 
           {/* Colonne droite : historique */}
-          <div className="w-full md:w-2/3">
+          <div className="w-full lg:w-2/3">
             <div className="bg-white rounded-2xl shadow p-6">
               <h2 className="text-xl font-bold mb-4">📋 Historique des transactions</h2>
 
@@ -309,7 +307,7 @@ export default function WalletPage() {
               </div>
 
               {/* Version mobile : cartes */}
-              <div className="block md:hidden space-y-3">
+              <div className="block lg:hidden space-y-3">
                 {currentRows.map((tx) => (
                   <div key={tx.id} className="border rounded-lg p-3">
                     <div className="flex justify-between">
@@ -325,7 +323,7 @@ export default function WalletPage() {
               </div>
 
               {/* Version desktop : tableau */}
-              <div className="hidden md:block overflow-x-auto">
+              <div className="hidden lg:block overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50">
                     <tr>
@@ -339,7 +337,7 @@ export default function WalletPage() {
                   <tbody>
                     {currentRows.map((tx) => (
                       <tr key={tx.id} className="border-t">
-                        <td className="p-2">{new Date(tx.created_at).toLocaleDateString('fr-FR')}</td>
+                        <td className="p-2 text-xs">{new Date(tx.created_at).toLocaleDateString()}</td>
                         <td className="p-2 capitalize">{tx.type}</td>
                         <td className={`p-2 font-medium ${tx.type === 'deposit' ? 'text-green-600' : 'text-red-600'}`}>
                           {tx.type === 'deposit' ? '+' : '-'}{tx.amount.toLocaleString()} FCFA

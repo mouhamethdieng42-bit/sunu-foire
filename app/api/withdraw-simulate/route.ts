@@ -25,8 +25,17 @@ export async function POST(request: Request) {
     }
 
     const { amount, paymentMethod = 'wave' } = await request.json();
-    if (!amount || amount < 500) {
-      return NextResponse.json({ error: 'Montant minimum 500 FCFA' }, { status: 400 });
+
+    // Récupérer le montant minimum de retrait depuis les paramètres
+    const { data: minWithdrawalSetting } = await supabase
+      .from('settings')
+      .select('value')
+      .eq('key', 'min_withdrawal_amount')
+      .single();
+    const minWithdrawal = parseInt(minWithdrawalSetting?.value || '1000');
+
+    if (!amount || amount < minWithdrawal) {
+      return NextResponse.json({ error: `Montant minimum de retrait : ${minWithdrawal} FCFA` }, { status: 400 });
     }
 
     // Vérifier solde
@@ -79,8 +88,6 @@ export async function POST(request: Request) {
           <p>Merci de votre confiance.</p>
         `),
       });
-    } else {
-      console.error('Email utilisateur manquant');
     }
 
     return NextResponse.json({ success: true, newBalance, reference });
