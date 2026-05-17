@@ -4,32 +4,29 @@ import { useEffect, useState } from 'react';
 
 export default function InstallButton() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const [show, setShow] = useState(false);
 
   useEffect(() => {
     const handler = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      setShow(true);
     };
     window.addEventListener('beforeinstallprompt', handler);
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
   const handleInstall = async () => {
-    if (!deferredPrompt) {
-      alert("Pour installer l'application, utilisez le menu du navigateur : 'Ajouter à l'écran d'accueil'.");
-      return;
-    }
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      setDeferredPrompt(null);
-      setShow(false);
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+      }
+    } else {
+      alert("Pour installer l'application, utilisez le menu du navigateur : 'Ajouter à l'écran d'accueil' (ou 'Installer l'application').");
     }
   };
 
-  if (!show) return null;
+  // Bouton toujours visible
   return (
     <button
       onClick={handleInstall}
